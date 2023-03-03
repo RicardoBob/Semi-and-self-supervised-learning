@@ -31,22 +31,31 @@ cudnn.benchmark = True
 
 ##################### LOAD DATASET ###############################
 
-def load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_number, batch_size):
+def load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_number, batch_size, valid_split):
     transform = DataAugmentationDINO(global_crops_scale, local_crops_scale, local_crops_number)
+    val_transform = transforms.Compose([transforms.ToTensor(),transforms.Resize((224,224))])
 
     #load stanford cars dataset
     train_set = torchvision.datasets.StanfordCars(root = dataset_path, split="train", download=True, transform=transform)
-    test_set = torchvision.datasets.StanfordCars(root = dataset_path, split="test", download=True, transform=transform)
+    val_set = torchvision.datasets.StanfordCars(root = './data', split="train", download=True, transform=val_transform)
 
     #train-val split
-    train_set, val_set = torch.utils.data.random_split(train_set, [0.9, 0.1])
+    num_train = len(train_set)
+    indices = list(range(num_train))
+    np.random.shuffle(indices)
+    split = int(np.floor(valid_split * num_train))
+    train_idx, valid_idx = indices[split:], indices[:split]
+
+    #train-val samplers
+    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
+    valid_sampler = torch.utils.data.SubsetRandomSampler(valid_idx)
 
     #data loaders
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size = batch_size, shuffle=True, num_workers=2)
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size = batch_size, shuffle=True, num_workers=2)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size = batch_size, shuffle=True, num_workers=2)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size = batch_size, sampler=train_sampler, num_workers=2)
+    knn_train_loader = torch.utils.data.DataLoader(val_set, batch_size = batch_size, sampler=train_sampler, num_workers=2)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size = batch_size, sampler=valid_sampler, num_workers=2)
 
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader, knn_train_loader
 
 
 ################### PRETRAINED MODELS ##########################
@@ -123,9 +132,9 @@ def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_sched
 def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale, 
                 local_crops_number, batch_size, warmup_teacher_temp, teacher_temp, 
                 warmup_teacher_temp_epochs, epochs, momentum_teacher, lr, min_lr, clip_grad, 
-                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path):
+                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split):
     
-    train_loader, val_loader, test_loader = load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_number, batch_size)
+    train_loader, val_loader, knn_train_loader = load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_number, batch_size, valid_split)
 
     teacher, student = load_models(arch, patch_size, out_dim)
     
@@ -164,8 +173,8 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
         epoch_loss = training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer)
         print("Epoch %s, loss: %.4f" % (epoch+1, epoch_loss))
 
-        train_features, train_labels = knn_features(teacher,train_loader)
-        val_features, val_labels = knn_features(teacher,val_loader,device)
+        train_features, train_labels = knn_features(teacher.backbone,knn_train_loader)
+        val_features, val_labels = knn_features(teacher.backbone,val_loader)
 
         val_accuracy = knn_classifier(train_features, train_labels, val_features, val_labels)
         print("Validation accuracy = %.4f", val_accuracy)
@@ -184,6 +193,7 @@ def main():
     local_crops_scale = (0.05, 0.4)
     local_crops_number = 8
     batch_size = 32
+    valid_split = 0.1
 
     #training
     warmup_teacher_temp = 0.04
@@ -207,7 +217,7 @@ def main():
     train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale, 
                 local_crops_number, batch_size, warmup_teacher_temp, teacher_temp, 
                 warmup_teacher_temp_epochs, epochs, momentum_teacher, lr, min_lr, clip_grad, 
-                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path)
+                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split)
 
 
 main()
