@@ -15,8 +15,8 @@ def knn_features(model, data_loader, device):
     with torch.no_grad():
         for i, data in enumerate(data_loader, 0):
             inputs, labels = data
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            inputs = [im.cuda(non_blocking=True) for im in inputs]
+            labels = labels.cuda(non_blocking=True)
             outputs = model(inputs)
             if features is None and targets is None:
                 features = outputs

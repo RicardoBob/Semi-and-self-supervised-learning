@@ -34,11 +34,16 @@ cudnn.benchmark = True
 def load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_number, batch_size):
     transform = DataAugmentationDINO(global_crops_scale, local_crops_scale, local_crops_number)
 
+    #load stanford cars dataset
     train_set = torchvision.datasets.StanfordCars(root = dataset_path, split="train", download=True, transform=transform)
     test_set = torchvision.datasets.StanfordCars(root = dataset_path, split="test", download=True, transform=transform)
 
+    #train-val split
+    train_set, val_set = torch.utils.data.random_split(train_set, [0.9, 0.1])
+
+    #data loaders
     train_loader = torch.utils.data.DataLoader(train_set, batch_size = batch_size, shuffle=True, num_workers=2)
-    val_loader = None
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size = batch_size, shuffle=True, num_workers=2)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size = batch_size, shuffle=True, num_workers=2)
 
     return train_loader, val_loader, test_loader
@@ -159,7 +164,7 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
         epoch_loss = training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer)
         print("Epoch %s, loss: %.4f" % (epoch+1, epoch_loss))
 
-        train_features, train_labels = knn_features(teacher,train_loader,device)
+        train_features, train_labels = knn_features(teacher,train_loader)
         val_features, val_labels = knn_features(teacher,val_loader,device)
 
         val_accuracy = knn_classifier(train_features, train_labels, val_features, val_labels)
