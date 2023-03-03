@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 
 
-def knn_features(model, data_loader, device):
+def knn_features(model, data_loader):
     features, targets = None, None
     with torch.no_grad():
         for i, data in enumerate(data_loader, 0):
