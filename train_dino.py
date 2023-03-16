@@ -172,20 +172,18 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
 
     # tensorboard writer
     comment = "Default_params_nepochs=" + str(epochs)
-    writer = SummaryWriter(comment)
+    writer = SummaryWriter(comment=comment)
     
     for epoch in range(epochs):
 
         # single epoch
         epoch_loss = training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer)
-        print("Epoch %s, loss: %.4f" % (epoch+1, epoch_loss))
 
         # knn validation
         train_features, train_labels = knn_features(teacher.backbone,knn_train_loader)
         val_features, val_labels = knn_features(teacher.backbone,val_loader)
 
         val_accuracy = knn_classifier(train_features, train_labels, val_features, val_labels)
-        print("Validation accuracy = %.4f", val_accuracy)
 
         # tensorboard logs
         writer.add_scalar("Loss/train", epoch_loss, epoch+1)
@@ -199,6 +197,9 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
             'epoch': epoch + 1,
             'dino_loss': dino_loss.state_dict(),
         }
+
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
 
         torch.save(save_dict, os.path.join(save_path, 'checkpoint.pth'))
 
