@@ -11,6 +11,8 @@ import numpy as np
 from PIL import Image
 import math
 import torch.distributed as dist
+import os
+from torch.utils.tensorboard import SummaryWriter
 from linear_evaluation import train_model, eval_model
 from knn_evaluation import knn_features, knn_classifier
 import utils
@@ -132,7 +134,7 @@ def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_sched
 def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale, 
                 local_crops_number, batch_size, warmup_teacher_temp, teacher_temp, 
                 warmup_teacher_temp_epochs, epochs, momentum_teacher, lr, min_lr, clip_grad, 
-                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split):
+                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split, save_path):
     
     train_loader, val_loader, knn_train_loader = load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_number, batch_size, valid_split)
 
@@ -168,16 +170,42 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
     momentum_schedule = utils.cosine_scheduler(momentum_teacher, 1,
                                                    epochs, len(train_loader))
 
+    # tensorboard writer
+    comment = "Default_params_nepochs=" + str(epochs)
+    writer = SummaryWriter(comment)
     
     for epoch in range(epochs):
+
+        # single epoch
         epoch_loss = training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer)
         print("Epoch %s, loss: %.4f" % (epoch+1, epoch_loss))
 
+        # knn validation
         train_features, train_labels = knn_features(teacher.backbone,knn_train_loader)
         val_features, val_labels = knn_features(teacher.backbone,val_loader)
 
         val_accuracy = knn_classifier(train_features, train_labels, val_features, val_labels)
         print("Validation accuracy = %.4f", val_accuracy)
+
+        # tensorboard logs
+        writer.add_scalar("Loss/train", epoch_loss, epoch+1)
+        writer.add_scalar("Accuracy/validation", val_accuracy, epoch+1)
+        
+        # save model
+        save_dict = {
+            'student': student.state_dict(),
+            'teacher': teacher.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'epoch': epoch + 1,
+            'dino_loss': dino_loss.state_dict(),
+        }
+
+        torch.save(save_dict, os.path.join(save_path, 'checkpoint.pth'))
+
+
+    #close tensorbloard 
+    writer.flush()
+    writer.close()
 
 
 def main():
@@ -211,13 +239,14 @@ def main():
 
     #misc
     dataset_path = './data'
+    save_path = './saved_models'
 
     ######## RUN DINO ########
     
     train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale, 
                 local_crops_number, batch_size, warmup_teacher_temp, teacher_temp, 
                 warmup_teacher_temp_epochs, epochs, momentum_teacher, lr, min_lr, clip_grad, 
-                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split)
+                weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split, save_path)
 
 
 main()
