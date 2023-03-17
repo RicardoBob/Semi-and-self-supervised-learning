@@ -39,7 +39,7 @@ def load_data(dataset_path, global_crops_scale, local_crops_scale, local_crops_n
 
     #load stanford cars dataset
     train_set = torchvision.datasets.StanfordCars(root = dataset_path, split="train", download=True, transform=transform)
-    val_set = torchvision.datasets.StanfordCars(root = './data', split="train", download=True, transform=val_transform)
+    val_set = torchvision.datasets.StanfordCars(root = dataset_path, split="train", download=True, transform=val_transform)
 
     #train-val split
     num_train = len(train_set)
