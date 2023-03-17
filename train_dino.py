@@ -239,8 +239,8 @@ def main():
     freeze_last_layer = 1
 
     #misc
-    dataset_path = './data'
-    save_path = './saved_models'
+    dataset_path = '../../data/projects/cpca2227818a0/ricardo.teixeira/dataset'
+    save_path = '../../data/projects/cpca2227818a0/ricardo.teixeira/saved_models'
 
     ######## RUN DINO ########
     
