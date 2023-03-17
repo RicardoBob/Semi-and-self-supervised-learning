@@ -228,7 +228,7 @@ def main():
     warmup_teacher_temp = 0.04
     teacher_temp = 0.04
     warmup_teacher_temp_epochs = 0
-    epochs = 10
+    epochs = 100
     momentum_teacher = 0.996
     lr = 0.0005
     min_lr = 1e-6
@@ -239,8 +239,8 @@ def main():
     freeze_last_layer = 1
 
     #misc
-    dataset_path = '../../data/projects/cpca2227818a0/ricardo.teixeira/dataset'
-    save_path = '../../data/projects/cpca2227818a0/ricardo.teixeira/saved_models'
+    dataset_path = '/data/projects/cpca2227818a0/ricardo.teixeira/dataset'
+    save_path = '/data/projects/cpca2227818a0/ricardo.teixeira/saved_models'
 
     ######## RUN DINO ########
     

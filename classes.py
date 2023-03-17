@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import utils
+import torch.distributed as dist
 
 class DataAugmentationDINO(object):
     def __init__(self, global_crops_scale, local_crops_scale, local_crops_number):
