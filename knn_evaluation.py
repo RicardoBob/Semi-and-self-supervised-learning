@@ -33,22 +33,22 @@ def knn_classifier(train_features, train_labels, test_features, test_labels, k=2
     train_features = train_features.t()
     similarities = torch.mm(test_features, train_features)
     distances, indices = similarities.topk(k,largest=True, sorted=True)
-    candidates = train_labels.view(1, -1).expand(test_labels.shape[0], -1)
+    candidates = train_labels.view(1, -1).expand(test_features.shape[0], -1)
     retrieved_neighbors = torch.gather(candidates, 1, indices)
 
-    retrieval_one_hot.resize_(test_labels.shape[0] * k, num_classes).zero_()
+    retrieval_one_hot.resize_(test_features.shape[0] * k, num_classes).zero_()
     retrieval_one_hot.scatter_(1, retrieved_neighbors.view(-1, 1), 1)
     distances_transform = distances.clone().div_(t).exp_()
     probs = torch.sum(
         torch.mul(
-                retrieval_one_hot.view(test_labels.shape[0], -1, num_classes),
-                distances_transform.view(test_labels.shape[0], -1, 1),
+                retrieval_one_hot.view(test_features.shape[0], -1, num_classes),
+                distances_transform.view(test_features.shape[0], -1, 1),
             ),
             1,
         )
     _, predictions = probs.sort(1, True)
 
-    correct = predictions.eq(test_labels.view(-1,1))
-    accuracy = correct.narrow(1, 0, 1).sum().item() * 100 / test_labels.shape[0]
+    correct = predictions.eq(test_labels.data.view(-1,1))
+    accuracy = correct.narrow(1, 0, 1).sum().item() * 100.0 / test_labels.shape[0]
     #print("Accuracy: " + str(accuracy))
     return accuracy

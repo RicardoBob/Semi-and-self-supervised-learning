@@ -221,14 +221,14 @@ def main():
     global_crops_scale = (0.4, 1.)
     local_crops_scale = (0.05, 0.4)
     local_crops_number = 8
-    batch_size = 32
+    batch_size = 64
     valid_split = 0.1
 
     #training
     warmup_teacher_temp = 0.04
     teacher_temp = 0.04
     warmup_teacher_temp_epochs = 0
-    epochs = 100
+    epochs = 300
     momentum_teacher = 0.996
     lr = 0.0005
     min_lr = 1e-6
