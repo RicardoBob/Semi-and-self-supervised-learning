@@ -183,11 +183,12 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
         train_features, train_labels = knn_features(teacher.backbone,knn_train_loader)
         val_features, val_labels = knn_features(teacher.backbone,val_loader)
 
-        val_accuracy = knn_classifier(train_features, train_labels, val_features, val_labels)
+        top1, top5 = knn_classifier(train_features, train_labels, val_features, val_labels)
 
         # tensorboard logs
         writer.add_scalar("Loss/train", epoch_loss, epoch+1)
-        writer.add_scalar("Accuracy/validation", val_accuracy, epoch+1)
+        writer.add_scalar("Top1_Accuracy/validation", top1, epoch+1)
+        writer.add_scalar("Top5_Accuracy/validation", top5, epoch+1)
         
         # save model
         save_dict = {
@@ -228,7 +229,7 @@ def main():
     warmup_teacher_temp = 0.04
     teacher_temp = 0.04
     warmup_teacher_temp_epochs = 0
-    epochs = 300
+    epochs = 5
     momentum_teacher = 0.996
     lr = 0.0005
     min_lr = 1e-6

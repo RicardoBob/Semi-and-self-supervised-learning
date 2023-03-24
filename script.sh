@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=dino          # create a short name for your job
-#SBATCH --output="default_params_epochs=100-%j.out"      # %j will be replaced by the slurm jobID
+#SBATCH --output="default_params_epochs=5-%j.out"      # %j will be replaced by the slurm jobID
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=1        # cpu-cores per task (>1 if multi-threaded tasks)
