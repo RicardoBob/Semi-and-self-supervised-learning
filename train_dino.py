@@ -87,7 +87,7 @@ def load_models(arch, patch_size, out_dim):
 
 ######################## ONE EPOCH #############################
 
-def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer):
+def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer,lr):
     
     running_loss = 0.0
 
@@ -96,7 +96,8 @@ def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_sched
         # update weight decay and learning rate according to their schedule
         it = len(train_loader) * epoch + it  # global training iteration
         for i, param_group in enumerate(optimizer.param_groups):
-            param_group["lr"] = lr_schedule[it]
+            #param_group["lr"] = lr_schedule[it]
+            param_group["lr"] = lr
             if i == 0:  # only the first group is regularized
                 param_group["weight_decay"] = wd_schedule[it]
 
@@ -171,13 +172,13 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
                                                    epochs, len(train_loader))
 
     # tensorboard writer
-    comment = "Default_params_nepochs=" + str(epochs)
+    comment = "fixed_lr_nepochs=" + str(epochs)+"_lr="+str(lr)
     writer = SummaryWriter(comment=comment)
     
     for epoch in range(epochs):
 
         # single epoch
-        epoch_loss = training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer)
+        epoch_loss = training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer,lr)
 
         # knn validation
         train_features, train_labels = knn_features(teacher.backbone,knn_train_loader)
@@ -222,16 +223,16 @@ def main():
     global_crops_scale = (0.4, 1.)
     local_crops_scale = (0.05, 0.4)
     local_crops_number = 8
-    batch_size = 64
+    batch_size = 128
     valid_split = 0.1
 
     #training
     warmup_teacher_temp = 0.04
     teacher_temp = 0.04
     warmup_teacher_temp_epochs = 0
-    epochs = 5
+    epochs = 300
     momentum_teacher = 0.996
-    lr = 0.0005
+    lr = 5e-6
     min_lr = 1e-6
     clip_grad = 3.0
     weight_decay = 0.04
