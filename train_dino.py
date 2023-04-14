@@ -87,12 +87,16 @@ def load_models(arch, patch_size, out_dim):
 
 ######################## ONE EPOCH #############################
 
-def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer,lr):
+def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, clip_grad, freeze_last_layer, lr):
     
     running_loss = 0.0
 
+    comment = "base_lr="+str(lr)
+    writer = SummaryWriter(comment=comment)
+
     for it, (images, _) in enumerate(train_loader,0):
         
+        lr = lr*1.039
         # update weight decay and learning rate according to their schedule
         it = len(train_loader) * epoch + it  # global training iteration
         for i, param_group in enumerate(optimizer.param_groups):
@@ -125,7 +129,13 @@ def training_step(student, teacher, dino_loss, train_loader, optimizer, lr_sched
 
         running_loss += loss
 
+        writer.add_scalar("Loss_during_epoch", loss, it+1)
+        writer.add_scalar("Lr_during_epoch", lr, it+1)
+
     epoch_loss = running_loss / len(train_loader)
+
+    writer.flush()
+    writer.close()
 
     return epoch_loss 
 
@@ -173,7 +183,7 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
 
     # tensorboard writer
     comment = "fixed_lr_nepochs=" + str(epochs)+"_lr="+str(lr)
-    writer = SummaryWriter(comment=comment)
+    #writer = SummaryWriter(comment=comment)
     
     for epoch in range(epochs):
 
@@ -187,9 +197,9 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
         top1, top5 = knn_classifier(train_features, train_labels, val_features, val_labels)
 
         # tensorboard logs
-        writer.add_scalar("Loss/train", epoch_loss, epoch+1)
-        writer.add_scalar("Top1_Accuracy/validation", top1, epoch+1)
-        writer.add_scalar("Top5_Accuracy/validation", top5, epoch+1)
+        #writer.add_scalar("Loss/train", epoch_loss, epoch+1)
+        #writer.add_scalar("Top1_Accuracy/validation", top1, epoch+1)
+        #writer.add_scalar("Top5_Accuracy/validation", top5, epoch+1)
         
         # save model
         save_dict = {
@@ -207,8 +217,8 @@ def train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale,
 
 
     #close tensorbloard 
-    writer.flush()
-    writer.close()
+    #writer.flush()
+    #writer.close()
 
 
 def main():
@@ -230,9 +240,9 @@ def main():
     warmup_teacher_temp = 0.04
     teacher_temp = 0.04
     warmup_teacher_temp_epochs = 0
-    epochs = 300
+    epochs = 1
     momentum_teacher = 0.996
-    lr = 5e-6
+    #lr = 5e-6
     min_lr = 1e-6
     clip_grad = 3.0
     weight_decay = 0.04
@@ -246,7 +256,8 @@ def main():
 
     ######## RUN DINO ########
     
-    train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale, 
+    for lr in [1e-5, 1e-6, 1e-7, 1e-8]:
+        train_dino(arch, patch_size, out_dim, global_crops_scale, local_crops_scale, 
                 local_crops_number, batch_size, warmup_teacher_temp, teacher_temp, 
                 warmup_teacher_temp_epochs, epochs, momentum_teacher, lr, min_lr, clip_grad, 
                 weight_decay, weight_decay_end, warmup_epochs, freeze_last_layer, dataset_path, valid_split, save_path)
